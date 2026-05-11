@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: cue-king-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Learnjs
+      POSTGRES_DB: cue_king_db
+    ports:
+      - '5433:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
