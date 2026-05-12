@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -27,7 +27,7 @@ app.use('/api/', apiLimiter);
 app.use('/uploads', express.static('uploads'));
 
 // Base Route
-app.get('/', (req, res) => {
+app.get('/', (req:Request, res:Response) => {
   res.send('Cue King API is running...');
 });
 

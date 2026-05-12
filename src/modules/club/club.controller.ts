@@ -18,7 +18,11 @@ export const getClubs = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const getClubById = asyncHandler(async (req: Request, res: Response) => {
-  const club = await clubService.getClubById(req.params.id);
+  const clubId = req.params.id;
+  if(typeof clubId !== "string"){
+    return sendResponse(res, 400, false, 'Club ID is required');
+  }
+  const club = await clubService.getClubById(clubId);
   if (!club) {
     return sendResponse(res, 404, false, 'Club not found');
   }
@@ -27,11 +31,15 @@ export const getClubById = asyncHandler(async (req: Request, res: Response) => {
 
 export const addTableCategory = asyncHandler(async (req: AuthRequest, res: Response) => {
   // Add an extra check here to ensure req.user.id is the owner of req.params.id (club)
-  const club = await clubService.getClubById(req.params.id);
+  const clubId = req.params.id;
+  if(typeof clubId !== "string"){
+    return sendResponse(res, 400, false, 'Club ID is required');
+  }
+  const club = await clubService.getClubById(clubId);
   if (!club || club.ownerId !== req.user.id) {
     return sendResponse(res, 403, false, 'Not authorized to add categories to this club');
   }
 
-  const category = await clubService.addTableCategory(req.params.id, req.body);
+  const category = await clubService.addTableCategory(clubId, req.body);
   sendResponse(res, 201, true, 'Table category added successfully', category);
 });

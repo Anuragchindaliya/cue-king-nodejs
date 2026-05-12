@@ -4,7 +4,11 @@ import { sendResponse } from '../../utils/response';
 import { asyncHandler } from '../../utils/asyncHandler';
 
 export const getLocations = asyncHandler(async (req: Request, res: Response) => {
-  const locations = await locationService.getAllLocations();
+  const filters = {
+    city: req.query.city as string,
+    area: req.query.area as string,
+  };
+  const locations = await locationService.getAllLocations(filters);
   sendResponse(res, 200, true, 'Locations fetched successfully', locations);
 });
 
