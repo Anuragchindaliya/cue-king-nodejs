@@ -7,6 +7,7 @@ import locationRoutes from './modules/location/location.routes';
 import clubRoutes from './modules/club/club.routes';
 import bookingRoutes from './modules/booking/booking.routes';
 import productRoutes from './modules/product/product.routes';
+import uploadRoutes from './modules/upload/upload.routes';
 
 const router = Router();
 
@@ -16,5 +17,6 @@ router.use('/locations', locationRoutes);
 router.use('/clubs', clubRoutes);
 router.use('/bookings', bookingRoutes);
 router.use('/products', productRoutes);
+router.use('/uploads', uploadRoutes);
 
 export default router;

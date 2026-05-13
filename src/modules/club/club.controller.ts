@@ -9,11 +9,58 @@ export const createClub = asyncHandler(async (req: AuthRequest, res: Response) =
   sendResponse(res, 201, true, 'Club created successfully', club);
 });
 
+export const updateClub = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const clubId = req.params.id;
+  const existingClub = await clubService.getClubById(clubId);
+  if (!existingClub || existingClub.ownerId !== req.user.id) {
+    return sendResponse(res, 403, false, 'Not authorized to update this club');
+  }
+  const club = await clubService.updateClub(clubId, req.user.id, req.body);
+  sendResponse(res, 200, true, 'Club updated successfully', club);
+});
+
+export const getMyClubs = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const clubs = await clubService.getClubs({ ownerId: req.user.id });
+  sendResponse(res, 200, true, 'My clubs fetched successfully', clubs);
+});
+
+function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371; // Radius of the earth in km
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const d = R * c; // Distance in km
+  return d;
+}
+
+function deg2rad(deg: number) {
+  return deg * (Math.PI / 180);
+}
+
 export const getClubs = asyncHandler(async (req: Request, res: Response) => {
   const filters: any = {};
   if (req.query.locationId) filters.locationId = req.query.locationId;
   
-  const clubs = await clubService.getClubs(filters);
+  let clubs = await clubService.getClubs(filters);
+
+  const { lat, lng } = req.query;
+  if (lat && lng) {
+    const userLat = parseFloat(lat as string);
+    const userLng = parseFloat(lng as string);
+
+    clubs = clubs.map(club => {
+      if (club.lat && club.lng) {
+        const distance = getDistanceFromLatLonInKm(userLat, userLng, club.lat, club.lng);
+        return { ...club, distance };
+      }
+      return { ...club, distance: Infinity };
+    }).sort((a: any, b: any) => a.distance - b.distance);
+  }
+
   sendResponse(res, 200, true, 'Clubs fetched successfully', clubs);
 });
 

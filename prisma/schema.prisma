@@ -6,6 +6,95 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  password       String?
+  googleId       String?   @unique
+  name           String?
+  role           Role      @default(PLAYER)
+  telegramChatId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  bookings       Booking[]
+  clubs          Club[]    @relation("ClubOwner")
+}
+
+model Location {
+  id        String   @id @default(uuid())
+  city      String
+  area      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  clubs     Club[]
+}
+
+model Club {
+  id                 String          @id @default(uuid())
+  name               String
+  description        String?
+  rating             Float           @default(0)
+  coverImage         String?
+  interiorImages     String[]
+  amenities          String[]
+  fullAddress        String?
+  cancellationPolicy String?
+  reschedulingPolicy String?
+  lat                Float?
+  lng                Float?
+  openingTime        String
+  closingTime        String
+  ownerId            String
+  locationId         String
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  bookings           Booking[]
+  location           Location        @relation(fields: [locationId], references: [id])
+  owner              User            @relation("ClubOwner", fields: [ownerId], references: [id])
+  products           Product[]
+  tableCategories    TableCategory[]
+}
+
+model TableCategory {
+  id           String    @id @default(uuid())
+  name         String
+  quantity     Int
+  pricePerHour Float
+  image        String?
+  clubId       String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  bookings     Booking[]
+  club         Club      @relation(fields: [clubId], references: [id])
+}
+
+model Booking {
+  id              String        @id @default(uuid())
+  userId          String
+  clubId          String
+  tableCategoryId String
+  startTime       DateTime
+  endTime         DateTime
+  status          BookingStatus @default(PENDING)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  club            Club          @relation(fields: [clubId], references: [id])
+  tableCategory   TableCategory @relation(fields: [tableCategoryId], references: [id])
+  user            User          @relation(fields: [userId], references: [id])
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Float
+  image       String?
+  clubId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  club        Club     @relation(fields: [clubId], references: [id])
+}
+
 enum Role {
   PLAYER
   CLUB_OWNER
@@ -17,101 +106,4 @@ enum BookingStatus {
   CONFIRMED
   CANCELLED
   COMPLETED
-}
-
-model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  password  String?   // Optional for Google Auth users
-  googleId  String?   @unique // Optional, if linked with Google
-  name      String?
-  role      Role      @default(PLAYER)
-  
-  clubs     Club[]    @relation("ClubOwner")
-  bookings  Booking[]
-  
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-}
-
-model Location {
-  id        String    @id @default(uuid())
-  city      String
-  area      String
-  
-  clubs     Club[]
-  
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-}
-
-model Club {
-  id          String    @id @default(uuid())
-  name        String
-  lat         Float?
-  lng         Float?
-  openingTime String    // Format: "HH:mm"
-  closingTime String    // Format: "HH:mm"
-  
-  ownerId     String
-  owner       User      @relation("ClubOwner", fields: [ownerId], references: [id])
-  
-  locationId  String
-  location    Location  @relation(fields: [locationId], references: [id])
-  
-  tableCategories TableCategory[]
-  products        Product[]
-  bookings        Booking[]
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-model TableCategory {
-  id            String    @id @default(uuid())
-  name          String    // e.g., "Snooker Table", "Pool Table"
-  quantity      Int       // Total tables of this type in the club
-  pricePerHour  Float
-  
-  clubId        String
-  club          Club      @relation(fields: [clubId], references: [id])
-  
-  bookings      Booking[]
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-}
-
-model Booking {
-  id              String        @id @default(uuid())
-  
-  userId          String
-  user            User          @relation(fields: [userId], references: [id])
-  
-  clubId          String
-  club            Club          @relation(fields: [clubId], references: [id])
-  
-  tableCategoryId String
-  tableCategory   TableCategory @relation(fields: [tableCategoryId], references: [id])
-  
-  startTime       DateTime
-  endTime         DateTime
-  status          BookingStatus @default(PENDING)
-  
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-}
-
-model Product {
-  id          String    @id @default(uuid())
-  name        String
-  description String?
-  price       Float
-  image       String?   // Path/URL to the uploaded image
-  
-  clubId      String
-  club        Club      @relation(fields: [clubId], references: [id])
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
 }

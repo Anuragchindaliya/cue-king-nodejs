@@ -55,7 +55,7 @@ export const createBooking = async (
       tableCategoryId,
       startTime,
       endTime,
-      status: 'CONFIRMED', // Set confirmed immediately for simplicity, could be PENDING for payment
+      status: 'PENDING',
     },
   });
 };

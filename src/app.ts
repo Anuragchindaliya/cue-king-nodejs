@@ -4,9 +4,13 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import { errorHandler } from './middlewares/error.middleware';
+import { setupSwagger } from './config/swagger';
 
 // Initialize express app
 const app = express();
+
+// Setup Swagger
+setupSwagger(app);
 
 // Middlewares
 app.use(express.json());

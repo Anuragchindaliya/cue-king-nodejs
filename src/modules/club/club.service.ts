@@ -9,9 +9,18 @@ export const createClub = async (ownerId: string, data: any) => {
   });
 };
 
+export const updateClub = async (id: string, ownerId: string, data: any) => {
+  return prisma.club.update({
+    where: { id },
+    data,
+  });
+};
+
 export const getClubs = async (filters: any = {}) => {
+  const whereClause = Object.keys(filters).length > 0 ? filters : undefined;
+  
   return prisma.club.findMany({
-    where: filters,
+    ...(whereClause && { where: whereClause }),
     include: { location: true, tableCategories: true },
   });
 };
