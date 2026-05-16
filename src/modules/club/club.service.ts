@@ -121,8 +121,7 @@ export const getClubs = async (filters: any = {}) => {
 
   let clubs = await prisma.club.findMany({
     where: whereClause,
-    orderBy: needsLocalProcessing ? undefined : orderBy,
-    ...(needsLocalProcessing ? {} : { skip, take: limit }),
+    ...(needsLocalProcessing ? {} : { orderBy, skip, take: limit }),
     include: { location: true, tableCategories: true },
   });
 
