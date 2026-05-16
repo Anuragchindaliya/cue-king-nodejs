@@ -11,6 +11,9 @@ export const createClub = asyncHandler(async (req: AuthRequest, res: Response) =
 
 export const updateClub = asyncHandler(async (req: AuthRequest, res: Response) => {
   const clubId = req.params.id;
+ if(typeof clubId !== "string"){
+    return sendResponse(res, 400, false, 'Club ID is required');
+  }
   const existingClub = await clubService.getClubById(clubId);
   if (!existingClub || existingClub.ownerId !== req.user.id) {
     return sendResponse(res, 403, false, 'Not authorized to update this club');
@@ -41,27 +44,76 @@ function deg2rad(deg: number) {
   return deg * (Math.PI / 180);
 }
 
-export const getClubs = asyncHandler(async (req: Request, res: Response) => {
-  const filters: any = {};
-  if (req.query.locationId) filters.locationId = req.query.locationId;
-  
-  let clubs = await clubService.getClubs(filters);
+import redisClient from '../../config/redisClient';
 
-  const { lat, lng } = req.query;
-  if (lat && lng) {
-    const userLat = parseFloat(lat as string);
-    const userLng = parseFloat(lng as string);
-
-    clubs = clubs.map(club => {
-      if (club.lat && club.lng) {
-        const distance = getDistanceFromLatLonInKm(userLat, userLng, club.lat, club.lng);
-        return { ...club, distance };
-      }
-      return { ...club, distance: Infinity };
-    }).sort((a: any, b: any) => a.distance - b.distance);
+export const getSuggestions = asyncHandler(async (req: Request, res: Response) => {
+  const query = req.query.q as string;
+  if (!query || query.length < 2) {
+    return sendResponse(res, 200, true, 'Suggestions fetched successfully', []);
   }
 
-  sendResponse(res, 200, true, 'Clubs fetched successfully', clubs);
+  const cacheKey = `suggestions:${query.toLowerCase()}`;
+  
+  try {
+    const cached = await redisClient.get(cacheKey);
+    if (cached) {
+      return sendResponse(res, 200, true, 'Suggestions fetched successfully', JSON.parse(cached));
+    }
+  } catch (err) {
+    console.warn('Redis read error', err);
+  }
+
+  const suggestions = await clubService.getSuggestions(query);
+  
+  try {
+    // Cache for 1 hour
+    await redisClient.setex(cacheKey, 3600, JSON.stringify(suggestions));
+  } catch (err) {
+    console.warn('Redis write error', err);
+  }
+
+  sendResponse(res, 200, true, 'Suggestions fetched successfully', suggestions);
+});
+
+export const getClubs = asyncHandler(async (req: Request, res: Response) => {
+  const { 
+    search, 
+    sortBy, 
+    tableTypes, 
+    minPrice, 
+    maxPrice, 
+    lat, 
+    lng, 
+    radius,
+    amenities,
+    openNow,
+    is24_7,
+    page = '1', 
+    limit = '10' 
+  } = req.query;
+
+  const filters: any = {};
+  if (req.query.locationId) filters.locationId = req.query.locationId;
+  if (search) filters.search = String(search);
+  if (sortBy) filters.sortBy = String(sortBy);
+  if (tableTypes) filters.tableTypes = String(tableTypes).split(',');
+  if (amenities) filters.amenities = String(amenities).split(',');
+  if (minPrice) filters.minPrice = Number(minPrice);
+  if (maxPrice) filters.maxPrice = Number(maxPrice);
+  if (openNow === 'true') filters.openNow = true;
+  if (is24_7 === 'true') filters.is24_7 = true;
+  if (lat && lng) {
+    filters.lat = parseFloat(String(lat));
+    filters.lng = parseFloat(String(lng));
+  }
+  if (radius) filters.radius = Number(radius);
+  
+  filters.page = Math.max(1, parseInt(String(page)));
+  filters.limit = Math.max(1, parseInt(String(limit)));
+
+  const result = await clubService.getClubs(filters);
+
+  sendResponse(res, 200, true, 'Clubs fetched successfully', result.data, result.meta);
 });
 
 export const getClubById = asyncHandler(async (req: Request, res: Response) => {

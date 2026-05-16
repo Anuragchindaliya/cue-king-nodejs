@@ -1,11 +1,19 @@
 import { Router } from 'express';
-import { createClub, getClubs, getClubById, addTableCategory, getMyClubs, updateClub } from './club.controller';
+import { createClub, getClubs, getClubById, addTableCategory, getMyClubs, updateClub, getSuggestions } from './club.controller';
 import { protect } from '../../middlewares/auth.middleware';
 import { authorize } from '../../middlewares/role.middleware';
 
 const router = Router();
 
 router.get('/my-clubs', protect, authorize('CLUB_OWNER', 'ADMIN'), getMyClubs);
+
+/**
+ * @swagger
+ * /api/clubs/suggestions:
+ *   get:
+ *     summary: Get club name suggestions
+ */
+router.get('/suggestions', getSuggestions);
 
 /**
  * @swagger
