@@ -21,20 +21,10 @@ export const login = async (req: Request, res: Response) => {
 };
 
 export const googleCallback = (req: Request, res: Response) => {
-  // Successful authentication, generate token and redirect or return JSON
+  // Successful authentication, generate token and redirect
   const user = req.user as any;
   const token = authService.generateTokenForUser(user);
 
-  // Usually, for OAuth, we redirect to frontend with token in URL or set a cookie.
-  // For API standard response, we return json (if frontend handles popup)
-  // Example returning JSON (useful if testing via API tools, but standard OAuth requires redirect)
-  
-  res.status(200).json({
-    success: true,
-    message: 'Google login successful',
-    data: {
-      user: { id: user.id, email: user.email, role: user.role },
-      token
-    }
-  });
+  // Redirect to frontend with token
+  res.redirect(`http://localhost:3000/login?token=${token}`);
 };

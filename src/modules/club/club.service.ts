@@ -1,11 +1,21 @@
 import prisma from '../../config/db';
 
 export const createClub = async (ownerId: string, data: any) => {
+  const { tableCategories, ...restData } = data;
+
+  const createData: any = {
+    ...restData,
+    ownerId,
+  };
+
+  if (tableCategories && Array.isArray(tableCategories)) {
+    createData.tableCategories = {
+      create: tableCategories
+    };
+  }
+
   return prisma.club.create({
-    data: {
-      ...data,
-      ownerId,
-    },
+    data: createData,
   });
 };
 
