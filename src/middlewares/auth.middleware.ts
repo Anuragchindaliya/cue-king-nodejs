@@ -20,6 +20,9 @@ export const protect = async (
   ) {
     try {
       token = req.headers.authorization.split(' ')[1];
+      if(!token){
+        return sendResponse(res, 401, false, 'Not authorized, no token');
+      }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;
 
