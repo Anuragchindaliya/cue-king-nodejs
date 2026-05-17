@@ -8,6 +8,7 @@ import { setupSwagger } from './config/swagger';
 
 // Initialize express app
 const app = express();
+app.set('trust proxy', 1);
 
 // Setup Swagger
 setupSwagger(app);
