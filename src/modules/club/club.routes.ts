@@ -47,8 +47,16 @@ router.get('/', getClubs);
  */
 router.get('/:id', getClubById);
 
+import { upload } from '../../middlewares/upload.middleware';
+
 // Protected routes
-router.post('/', protect, authorize('CLUB_OWNER', 'ADMIN'), createClub);
+router.post(
+  '/', 
+  protect, 
+  authorize('CLUB_OWNER', 'ADMIN'), 
+  upload.fields([{ name: 'coverImage', maxCount: 1 }, { name: 'interiorImages', maxCount: 5 }]),
+  createClub
+);
 router.put('/:id', protect, authorize('CLUB_OWNER', 'ADMIN'), updateClub);
 router.post('/:id/table-categories', protect, authorize('CLUB_OWNER', 'ADMIN'), addTableCategory);
 

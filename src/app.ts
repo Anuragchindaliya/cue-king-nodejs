@@ -27,8 +27,10 @@ const apiLimiter = rateLimit({
 });
 app.use('/api/', apiLimiter);
 
+import path from 'path';
+
 // Serve static files (for image uploads later)
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
 
 // Base Route
 app.get('/', (req:Request, res:Response) => {

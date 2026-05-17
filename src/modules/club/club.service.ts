@@ -16,19 +16,26 @@ export const updateClub = async (id: string, ownerId: string, data: any) => {
   });
 };
 
+import Fuse from 'fuse.js';
+
 export const getSuggestions = async (query: string) => {
-  const clubs = await prisma.club.findMany({
-    where: {
-      name: { contains: query, mode: 'insensitive' },
-    },
+  // Fetch all clubs (ideally this would be cached in Redis in a real prod env)
+  const allClubs = await prisma.club.findMany({
     select: {
       id: true,
       name: true,
       location: { select: { area: true, city: true } }
     },
-    take: 5,
   });
-  return clubs;
+
+  const fuse = new Fuse(allClubs, {
+    keys: ['name', 'location.area', 'location.city'],
+    threshold: 0.4, // lower is more strict, 0.4 allows for typos
+    distance: 100,
+  });
+
+  const results = fuse.search(query).slice(0, 5);
+  return results.map(result => result.item);
 };
 
 export const getClubs = async (filters: any = {}) => {

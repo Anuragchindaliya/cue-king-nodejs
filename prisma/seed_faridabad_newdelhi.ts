@@ -13,11 +13,14 @@ function parseTime(hoursStr: string): { open: string; close: string } {
   if (!match) return { open: "10:00", close: "23:00" };
   const to24 = (t: string) => {
     const [time, meridiem] = t.trim().split(/\s/);
+    if(!time || !meridiem) return "00:00";
     let [h, m] = time.split(":").map(Number);
+    if(!h || !m) return "00:00";
     if (meridiem.toUpperCase() === "PM" && h !== 12) h += 12;
     if (meridiem.toUpperCase() === "AM" && h === 12) h = 0;
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   };
+  if(!match[1] || !match[2]) return { open: "00:00", close: "23:59" };
   return { open: to24(match[1]), close: to24(match[2]) };
 }
 

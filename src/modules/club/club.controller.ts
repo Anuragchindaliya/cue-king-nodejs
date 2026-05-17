@@ -5,7 +5,44 @@ import { sendResponse } from '../../utils/response';
 import { asyncHandler } from '../../utils/asyncHandler';
 
 export const createClub = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const club = await clubService.createClub(req.user.id, req.body);
+  const data = { ...req.body };
+  
+  if (req.files) {
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    if (files['coverImage'] && files['coverImage'][0]) {
+      data.coverImage = `/uploads/${files['coverImage'][0].filename}`;
+    }
+    if (files['interiorImages'] && files['interiorImages'].length > 0) {
+      data.interiorImages = files['interiorImages'].map(f => `/uploads/${f.filename}`);
+    }
+  }
+
+  // Handle parsing stringified JSON fields (like tableCategories or amenities) if they came from FormData
+  if (typeof data.amenities === 'string') {
+    try { data.amenities = JSON.parse(data.amenities); } catch(e) {}
+  }
+  if (typeof data.tableCategories === 'string') {
+    try { data.tableCategories = JSON.parse(data.tableCategories); } catch(e) {}
+  }
+
+  // Handle location: find or create
+  if (data.city && data.area) {
+    const prisma = require('../../config/db').default;
+    let loc = await prisma.location.findFirst({
+      where: { city: { equals: data.city, mode: 'insensitive' }, area: { equals: data.area, mode: 'insensitive' } }
+    });
+    if (!loc) {
+      loc = await prisma.location.create({ data: { city: data.city, area: data.area } });
+    }
+    data.locationId = loc.id;
+  }
+  delete data.city;
+  delete data.area;
+
+  if (data.lat) data.lat = parseFloat(data.lat);
+  if (data.lng) data.lng = parseFloat(data.lng);
+
+  const club = await clubService.createClub(req.user.id, data);
   sendResponse(res, 201, true, 'Club created successfully', club);
 });
 
