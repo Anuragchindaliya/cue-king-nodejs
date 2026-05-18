@@ -3,26 +3,27 @@ import { AuthRequest } from '../../middlewares/auth.middleware';
 import * as clubService from './club.service';
 import { sendResponse } from '../../utils/response';
 import { asyncHandler } from '../../utils/asyncHandler';
+import { uploadToCloudinary } from '../../services/cloudinary.service';
+
+// Helper: upload a single buffer to Cloudinary and return the secure_url
+const uploadBuffer = async (buffer: Buffer, folder: string, originalName: string): Promise<string> => {
+  const baseName = originalName
+    .replace(/\.[^/.]+$/, '')
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .toLowerCase();
+  const result = await uploadToCloudinary(buffer, folder, `${baseName}_${Date.now()}`);
+  return result.secureUrl; // absolute HTTPS URL — stored in PostgreSQL
+};
 
 export const createClub = asyncHandler(async (req: AuthRequest, res: Response) => {
   const data = { ...req.body };
-  
-  if (req.files) {
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    if (files['coverImage'] && files['coverImage'][0]) {
-      data.coverImage = `/uploads/${files['coverImage'][0].filename}`;
-    }
-    if (files['interiorImages'] && files['interiorImages'].length > 0) {
-      data.interiorImages = files['interiorImages'].map(f => `/uploads/${f.filename}`);
-    }
-  }
 
-  // Handle parsing stringified JSON fields (like tableCategories or amenities) if they came from FormData
+  // Parse stringified JSON fields sent via FormData
   if (typeof data.amenities === 'string') {
-    try { data.amenities = JSON.parse(data.amenities); } catch(e) {}
+    try { data.amenities = JSON.parse(data.amenities); } catch (e) {}
   }
   if (typeof data.tableCategories === 'string') {
-    try { data.tableCategories = JSON.parse(data.tableCategories); } catch(e) {}
+    try { data.tableCategories = JSON.parse(data.tableCategories); } catch (e) {}
   }
 
   // Handle location: find or create
@@ -42,8 +43,43 @@ export const createClub = asyncHandler(async (req: AuthRequest, res: Response) =
   if (data.lat) data.lat = parseFloat(data.lat);
   if (data.lng) data.lng = parseFloat(data.lng);
 
+  // Step 1 — Create the club without images to get the DB-assigned clubId
   const club = await clubService.createClub(req.user.id, data);
-  sendResponse(res, 201, true, 'Club created successfully', club);
+  const clubId = club.id;
+
+  // Step 2 — Upload images to Cloudinary using the real clubId in the path
+  const imageUpdates: { coverImage?: string; interiorImages?: string[] } = {};
+
+  if (req.files) {
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+    // Cover image: cueking/clubs/{clubId}/cover
+    if (files['coverImage'] && files['coverImage'][0]) {
+      const f = files['coverImage'][0];
+      imageUpdates.coverImage = await uploadBuffer(
+        f.buffer,
+        `cueking/clubs/${clubId}/cover`,
+        f.originalname
+      );
+    }
+
+    // Interior images: cueking/clubs/{clubId}/interiors
+    if (files['interiorImages'] && files['interiorImages'].length > 0) {
+      imageUpdates.interiorImages = await Promise.all(
+        files['interiorImages'].map((f) =>
+          uploadBuffer(f.buffer, `cueking/clubs/${clubId}/interiors`, f.originalname)
+        )
+      );
+    }
+  }
+
+  // Step 3 — Patch the club record with absolute Cloudinary URLs (if any images were uploaded)
+  const finalClub =
+    Object.keys(imageUpdates).length > 0
+      ? await clubService.updateClub(clubId, req.user.id, imageUpdates)
+      : club;
+
+  sendResponse(res, 201, true, 'Club created successfully', finalClub);
 });
 
 export const updateClub = asyncHandler(async (req: AuthRequest, res: Response) => {
