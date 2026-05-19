@@ -69,3 +69,26 @@ export const getUserBookings = asyncHandler(async (req: AuthRequest, res: Respon
   const bookings = await bookingService.getUserBookings(req.user.id);
   sendResponse(res, 200, true, 'User bookings fetched', bookings);
 });
+
+export const getOwnerBookings = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const bookings = await bookingService.getOwnerBookings(req.user.id);
+  sendResponse(res, 200, true, 'Owner bookings fetched', bookings);
+});
+
+export const updateBookingStatus = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!status) {
+    return sendResponse(res, 400, false, 'Status is required');
+  }
+
+  const updatedBooking = await bookingService.updateBookingStatus(
+    id as string,
+    status,
+    req.user.id,
+    req.user.role as string
+  );
+
+  sendResponse(res, 200, true, 'Booking status updated', updatedBooking);
+});

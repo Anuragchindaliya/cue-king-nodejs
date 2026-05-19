@@ -67,3 +67,60 @@ export const getUserBookings = async (userId: string) => {
     orderBy: { startTime: 'desc' },
   });
 };
+
+export const getOwnerBookings = async (ownerId: string) => {
+  return prisma.booking.findMany({
+    where: { club: { ownerId } },
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      club: true,
+      tableCategory: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+};
+
+export const updateBookingStatus = async (
+  bookingId: string,
+  status: string,
+  userId: string,
+  role: string
+) => {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { club: true },
+  });
+
+  if (!booking) {
+    throw new Error('Booking not found');
+  }
+
+  if (role === 'PLAYER') {
+    if (booking.userId !== userId) {
+      throw new Error('Unauthorized: You can only cancel your own bookings');
+    }
+    if (status !== 'CANCELLED') {
+      throw new Error('Unauthorized: Players can only cancel bookings');
+    }
+    if (booking.status !== 'PENDING') {
+      throw new Error('Can only withdraw pending bookings');
+    }
+  } else if (role === 'CLUB_OWNER') {
+    if (booking.club.ownerId !== userId) {
+      throw new Error('Unauthorized: You can only manage bookings for your own clubs');
+    }
+    if (status !== 'CONFIRMED' && status !== 'REJECTED') {
+      throw new Error('Unauthorized: Owners can only accept or reject bookings');
+    }
+    if (booking.status !== 'PENDING') {
+      throw new Error('Can only accept or reject pending bookings');
+    }
+  } else {
+    throw new Error('Unauthorized role');
+  }
+
+  return prisma.booking.update({
+    where: { id: bookingId },
+    data: { status: status as any },
+  });
+};

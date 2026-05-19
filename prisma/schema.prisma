@@ -106,4 +106,5 @@ enum BookingStatus {
   CONFIRMED
   CANCELLED
   COMPLETED
+  REJECTED
 }

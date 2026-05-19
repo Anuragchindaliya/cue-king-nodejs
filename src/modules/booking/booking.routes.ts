@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createBooking, checkAvailability, getUserBookings, verifyBooking } from './booking.controller';
+import { createBooking, checkAvailability, getUserBookings, verifyBooking, getOwnerBookings, updateBookingStatus } from './booking.controller';
 import { protect } from '../../middlewares/auth.middleware';
 
 const router = Router();
@@ -51,5 +51,31 @@ router.get('/my-bookings', protect, getUserBookings);
  *         description: Verification successful
  */
 router.get('/verify-booking', verifyBooking);
+
+/**
+ * @swagger
+ * /api/bookings/owner-bookings:
+ *   get:
+ *     summary: Get owner bookings
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of bookings
+ */
+router.get('/owner-bookings', protect, getOwnerBookings);
+
+/**
+ * @swagger
+ * /api/bookings/{id}/status:
+ *   patch:
+ *     summary: Update booking status
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Status updated
+ */
+router.patch('/:id/status', protect, updateBookingStatus);
 
 export default router;
