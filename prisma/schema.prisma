@@ -7,17 +7,31 @@ datasource db {
 }
 
 model User {
-  id             String    @id @default(uuid())
-  email          String    @unique
-  password       String?
-  googleId       String?   @unique
-  name           String?
-  role           Role      @default(PLAYER)
-  telegramChatId String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  bookings       Booking[]
-  clubs          Club[]    @relation("ClubOwner")
+  id                    String         @id @default(uuid())
+  email                 String         @unique
+  password              String?
+  googleId              String?        @unique
+  name                  String?
+  role                  Role           @default(PLAYER)
+  telegramChatId        String?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  bookings              Booking[]
+  clubs                 Club[]         @relation("ClubOwner")
+  notifications         Notification[]
+  favorites             Favorite[]
+  reviews               Review[]
+  adminProfile          Admin?
+
+  // Notification Preferences
+  emailNotifications    Boolean        @default(true)
+  telegramNotifications Boolean        @default(true)
+  pushNotifications     Boolean        @default(true)
+  soundAlerts           Boolean        @default(true)
+
+  // Privacy Settings
+  shareHistory          Boolean        @default(true)
+  profilePublic         Boolean        @default(true)
 }
 
 model Location {
@@ -27,13 +41,15 @@ model Location {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   clubs     Club[]
+
+  @@index([city, area])
 }
 
 model Club {
-  id                 String          @id @default(uuid())
+  id                 String         @id @default(uuid())
   name               String
   description        String?
-  rating             Float           @default(0)
+  rating             Float          @default(0)
   coverImage         String?
   interiorImages     String[]
   amenities          String[]
@@ -46,41 +62,115 @@ model Club {
   closingTime        String
   ownerId            String
   locationId         String
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+  status             ClubStatus     @default(PENDING)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
   bookings           Booking[]
-  location           Location        @relation(fields: [locationId], references: [id])
-  owner              User            @relation("ClubOwner", fields: [ownerId], references: [id])
+  location           Location       @relation(fields: [locationId], references: [id])
+  owner              User           @relation("ClubOwner", fields: [ownerId], references: [id])
   products           Product[]
-  tableCategories    TableCategory[]
+  tables             Table[]
+  availabilities     Availability[]
+  favorites          Favorite[]
+  reviews            Review[]
+
+  @@index([name])
 }
 
-model TableCategory {
-  id           String    @id @default(uuid())
+model Table {
+  id           String      @id @default(uuid())
   name         String
-  quantity     Int
+  type         TableType   @default(SNOOKER)
   pricePerHour Float
-  image        String?
+  status       TableStatus @default(AVAILABLE)
   clubId       String
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  club         Club        @relation(fields: [clubId], references: [id], onDelete: Cascade)
   bookings     Booking[]
-  club         Club      @relation(fields: [clubId], references: [id])
+
+  @@index([clubId])
 }
 
 model Booking {
-  id              String        @id @default(uuid())
-  userId          String
-  clubId          String
-  tableCategoryId String
-  startTime       DateTime
-  endTime         DateTime
-  status          BookingStatus @default(PENDING)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  club            Club          @relation(fields: [clubId], references: [id])
-  tableCategory   TableCategory @relation(fields: [tableCategoryId], references: [id])
-  user            User          @relation(fields: [userId], references: [id])
+  id         String        @id @default(uuid())
+  userId     String
+  clubId     String
+  tableId    String
+  startTime  DateTime
+  endTime    DateTime
+  status     BookingStatus @default(PENDING)
+  totalPrice Float
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  club       Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  table      Table         @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tableId, startTime, endTime, status])
+  @@index([userId])
+  @@index([clubId])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  clubId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clubId])
+  @@index([userId])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  clubId    String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@index([clubId])
+}
+
+model Availability {
+  id        String   @id @default(uuid())
+  clubId    String
+  dayOfWeek Int
+  openTime  String
+  closeTime String
+  isClosed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, dayOfWeek])
+}
+
+model Admin {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  permissions String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Product {
@@ -92,7 +182,7 @@ model Product {
   clubId      String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  club        Club     @relation(fields: [clubId], references: [id])
+  club        Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
 }
 
 enum Role {
@@ -107,4 +197,29 @@ enum BookingStatus {
   CANCELLED
   COMPLETED
   REJECTED
+}
+
+enum ClubStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TableType {
+  SNOOKER
+  EIGHT_BALL_POOL
+}
+
+enum TableStatus {
+  AVAILABLE
+  MAINTENANCE
+  UNAVAILABLE
+}
+
+enum NotificationType {
+  BOOKING_CREATED
+  BOOKING_APPROVED
+  BOOKING_REJECTED
+  BOOKING_CANCELLED
+  SYSTEM
 }
