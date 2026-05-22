@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer';
 import jwt from 'jsonwebtoken';
 import prisma from '../config/db';
 import logger from '../utils/logger';
+import { emitToUser } from '../config/socket';
 
 const telegramBot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || '');
 
@@ -33,7 +34,7 @@ export const notifyVendor = async (bookingId: string) => {
       club: {
         include: { owner: true }
       },
-      tableCategory: true,
+      table: true,
       user: true,
     }
   });
@@ -41,7 +42,7 @@ export const notifyVendor = async (bookingId: string) => {
   if (!booking) return;
 
   const vendor = booking.club.owner;
-  const message = `New Booking Request!\n\nClub: ${booking.club.name}\nTable: ${booking.tableCategory.name}\nTime: ${booking.startTime.toLocaleString()} - ${booking.endTime.toLocaleString()}\nUser: ${booking.user.name || booking.user.email}\n\nPlease accept or reject this request.`;
+  const message = `New Booking Request!\n\nClub: ${booking.club.name}\nTable: ${booking.table.name}\nTime: ${booking.startTime.toLocaleString()} - ${booking.endTime.toLocaleString()}\nUser: ${booking.user.name || booking.user.email}\n\nPlease accept or reject this request.`;
 
   // 1. Send Telegram Notification
   if (vendor.telegramChatId && process.env.TELEGRAM_BOT_TOKEN) {
@@ -142,3 +143,23 @@ telegramBot.on('callback_query', async (ctx) => {
     }
   }
 });
+
+export const createAppNotification = async (
+  userId: string,
+  type: 'BOOKING_CREATED' | 'BOOKING_APPROVED' | 'BOOKING_REJECTED' | 'BOOKING_CANCELLED' | 'SYSTEM',
+  title: string,
+  message: string
+) => {
+  const notif = await prisma.notification.create({
+    data: {
+      userId,
+      type,
+      title,
+      message,
+      isRead: false,
+    },
+  });
+
+  emitToUser(userId, 'new-notification', notif);
+  return notif;
+};

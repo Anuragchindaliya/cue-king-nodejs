@@ -8,6 +8,11 @@ import clubRoutes from './modules/club/club.routes';
 import bookingRoutes from './modules/booking/booking.routes';
 import productRoutes from './modules/product/product.routes';
 import uploadRoutes from './modules/upload/upload.routes';
+import tableRoutes from './modules/table/table.routes';
+import notificationRoutes from './modules/notification/notification.routes';
+import favoritesRoutes from './modules/favorites/favorites.routes';
+import reviewsRoutes from './modules/reviews/reviews.routes';
+import adminRoutes from './modules/admin/admin.routes';
 
 const router = Router();
 
@@ -18,5 +23,10 @@ router.use('/clubs', clubRoutes);
 router.use('/bookings', bookingRoutes);
 router.use('/products', productRoutes);
 router.use('/uploads', uploadRoutes);
+router.use('/tables', tableRoutes);
+router.use('/notifications', notificationRoutes);
+router.use('/favorites', favoritesRoutes);
+router.use('/reviews', reviewsRoutes);
+router.use('/admin', adminRoutes);
 
 export default router;

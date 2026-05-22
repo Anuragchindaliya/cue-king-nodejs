@@ -1,16 +1,16 @@
 import prisma from '../../config/db';
 
 export const createClub = async (ownerId: string, data: any) => {
-  const { tableCategories, ...restData } = data;
+  const { tables, ...restData } = data;
 
   const createData: any = {
     ...restData,
     ownerId,
   };
 
-  if (tableCategories && Array.isArray(tableCategories)) {
-    createData.tableCategories = {
-      create: tableCategories
+  if (tables && Array.isArray(tables)) {
+    createData.tables = {
+      create: tables
     };
   }
 
@@ -29,7 +29,7 @@ export const updateClub = async (id: string, ownerId: string, data: any) => {
 import Fuse from 'fuse.js';
 
 export const getSuggestions = async (query: string) => {
-  // Fetch all clubs (ideally this would be cached in Redis in a real prod env)
+  // Fetch all clubs
   const allClubs = await prisma.club.findMany({
     select: {
       id: true,
@@ -40,7 +40,7 @@ export const getSuggestions = async (query: string) => {
 
   const fuse = new Fuse(allClubs, {
     keys: ['name', 'location.area', 'location.city'],
-    threshold: 0.4, // lower is more strict, 0.4 allows for typos
+    threshold: 0.4,
     distance: 100,
   });
 
@@ -81,18 +81,18 @@ export const getClubs = async (filters: any = {}) => {
   }
 
   if (tableTypes && tableTypes.length > 0) {
-    whereClause.tableCategories = {
+    whereClause.tables = {
       some: {
-        name: { in: tableTypes },
+        type: { in: tableTypes },
       },
     };
   }
 
   if (minPrice !== undefined || maxPrice !== undefined) {
-    whereClause.tableCategories = {
-      ...whereClause.tableCategories,
+    whereClause.tables = {
+      ...whereClause.tables,
       some: {
-        ...whereClause.tableCategories?.some,
+        ...whereClause.tables?.some,
         pricePerHour: {
           ...(minPrice !== undefined ? { gte: minPrice } : {}),
           ...(maxPrice !== undefined ? { lte: maxPrice } : {}),
@@ -112,9 +112,8 @@ export const getClubs = async (filters: any = {}) => {
     whereClause.closingTime = '23:59';
   }
 
-  // Handle radius filtering using simple bounding box for efficiency before Haversine
   if (lat && lng && radius) {
-    const r = radius / 111.32; // rough estimation: 1 deg = 111.32 km
+    const r = radius / 111.32;
     whereClause.lat = { gte: lat - r, lte: lat + r };
     whereClause.lng = { gte: lng - r, lte: lng + r };
   }
@@ -122,30 +121,22 @@ export const getClubs = async (filters: any = {}) => {
   const orderBy: any[] = [];
   if (sortBy === 'rating') {
     orderBy.push({ rating: 'desc' });
-  } else if (sortBy === 'price_asc') {
-    // skipped complex sorting for simplicity, rely on distance/rating
-  } else if (sortBy === 'price_desc') {
-    // skipped
   }
   orderBy.push({ createdAt: 'desc' });
 
   const shouldSortByDistance = sortBy === 'distance' && lat && lng;
-  
-  // If we have to filter by 'openNow', we might need to fetch all and filter in JS 
-  // because Prisma doesn't support complex time string comparisons easily
   const skip = (page - 1) * limit;
   const needsLocalProcessing = shouldSortByDistance || openNow;
 
   let clubs = await prisma.club.findMany({
     where: whereClause,
     ...(needsLocalProcessing ? {} : { orderBy, skip, take: limit }),
-    include: { location: true, tableCategories: true },
+    include: { location: true, tables: true },
   });
 
   // Local processing for Open Now
   if (openNow) {
     const now = new Date();
-    // Use IST timezone as requested/standard for India (GMT+5:30)
     const options = { timeZone: 'Asia/Kolkata', hour: '2-digit' as const, minute: '2-digit' as const, hour12: false };
     const currentTimeStr = new Intl.DateTimeFormat('en-GB', options).format(now);
     
@@ -154,7 +145,6 @@ export const getClubs = async (filters: any = {}) => {
       if (club.openingTime <= club.closingTime) {
         return currentTimeStr >= club.openingTime && currentTimeStr <= club.closingTime;
       } else {
-        // Overnight, e.g. 18:00 to 04:00
         return currentTimeStr >= club.openingTime || currentTimeStr <= club.closingTime;
       }
     });
@@ -164,12 +154,11 @@ export const getClubs = async (filters: any = {}) => {
     ? clubs.length 
     : await prisma.club.count({ where: whereClause });
 
-  // Calculate distance and sort
   if (lat && lng) {
     clubs = clubs.map(club => {
       let distance = Infinity;
       if (club.lat && club.lng) {
-        const R = 6371; // km
+        const R = 6371;
         const dLat = (club.lat - lat) * Math.PI / 180;
         const dLon = (club.lng - lng) * Math.PI / 180;
         const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -188,8 +177,8 @@ export const getClubs = async (filters: any = {}) => {
 
   if (!shouldSortByDistance && (sortBy === 'price_asc' || sortBy === 'price_desc')) {
      clubs.sort((a, b) => {
-        const minPriceA = Math.min(...a.tableCategories.map(tc => tc.pricePerHour));
-        const minPriceB = Math.min(...b.tableCategories.map(tc => tc.pricePerHour));
+        const minPriceA = a.tables.length > 0 ? Math.min(...a.tables.map(tc => tc.pricePerHour)) : 0;
+        const minPriceB = b.tables.length > 0 ? Math.min(...b.tables.map(tc => tc.pricePerHour)) : 0;
         return sortBy === 'price_asc' ? minPriceA - minPriceB : minPriceB - minPriceA;
      });
   }
@@ -212,15 +201,6 @@ export const getClubs = async (filters: any = {}) => {
 export const getClubById = async (id: string) => {
   return prisma.club.findUnique({
     where: { id },
-    include: { location: true, tableCategories: true },
-  });
-};
-
-export const addTableCategory = async (clubId: string, data: any) => {
-  return prisma.tableCategory.create({
-    data: {
-      ...data,
-      clubId,
-    },
+    include: { location: true, tables: true },
   });
 };

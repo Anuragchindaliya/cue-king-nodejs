@@ -578,26 +578,35 @@ async function main() {
       console.log(`  ✅  Created  : ${raw.name} (${raw.city})`);
     }
 
-    // Upsert TableCategories
-    const categories = [
-      ...(raw.snookerTables > 0
-        ? [{ name: "Snooker Table", quantity: raw.snookerTables, pricePerHour: raw.snookerPricePerHour }]
-        : []),
-      ...(raw.poolTables > 0
-        ? [{ name: "8 Ball Pool Table", quantity: raw.poolTables, pricePerHour: raw.poolPricePerHour }]
-        : []),
-    ];
+    // Seed physical Tables
+    await prisma.table.deleteMany({
+      where: { clubId },
+    });
 
-    for (const cat of categories) {
-      const existing = await prisma.tableCategory.findFirst({
-        where: { clubId, name: cat.name },
-      });
-      if (!existing) {
-        await prisma.tableCategory.create({ data: { ...cat, clubId } });
-      } else {
-        await prisma.tableCategory.update({
-          where: { id: existing.id },
-          data: { quantity: cat.quantity, pricePerHour: cat.pricePerHour },
+    if (raw.snookerTables && raw.snookerTables > 0) {
+      for (let j = 0; j < raw.snookerTables; j++) {
+        await prisma.table.create({
+          data: {
+            name: `Snooker Table ${j + 1}`,
+            type: 'SNOOKER',
+            pricePerHour: raw.snookerPricePerHour,
+            clubId,
+            status: 'AVAILABLE',
+          },
+        });
+      }
+    }
+
+    if (raw.poolTables && raw.poolTables > 0) {
+      for (let j = 0; j < raw.poolTables; j++) {
+        await prisma.table.create({
+          data: {
+            name: `Pool Table ${j + 1}`,
+            type: 'EIGHT_BALL_POOL',
+            pricePerHour: raw.poolPricePerHour,
+            clubId,
+            status: 'AVAILABLE',
+          },
         });
       }
     }

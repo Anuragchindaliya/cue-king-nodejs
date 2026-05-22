@@ -3,25 +3,46 @@ import { AuthRequest } from '../../middlewares/auth.middleware';
 import * as bookingService from './booking.service';
 import { sendResponse } from '../../utils/response';
 import { asyncHandler } from '../../utils/asyncHandler';
-import { notifyVendor, notifyPlayer } from '../../services/notification.service';
+import { notifyVendor, notifyPlayer, createAppNotification } from '../../services/notification.service';
+import { emitToOwner, emitToClub } from '../../config/socket';
 import jwt from 'jsonwebtoken';
 import prisma from '../../config/db';
 
 export const createBooking = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { clubId, tableCategoryId, startTime, endTime } = req.body;
+  const { clubId, tableId, startTime, endTime } = req.body;
   
-  const booking = await bookingService.createBooking(
-    req.user.id,
-    clubId,
-    tableCategoryId,
-    new Date(startTime),
-    new Date(endTime)
-  );
+  try {
+    const booking = await bookingService.createBooking(
+      req.user.id,
+      clubId,
+      tableId,
+      new Date(startTime),
+      new Date(endTime)
+    );
 
-  // Trigger notification asynchronously
-  notifyVendor(booking.id).catch(console.error);
+    // Trigger notifications asynchronously
+    notifyVendor(booking.id).catch(console.error);
+    createAppNotification(
+      booking.club.ownerId,
+      'BOOKING_CREATED',
+      'New Booking Request',
+      `A new booking has been requested for ${booking.table.name} at ${booking.club.name} by ${booking.user.name || booking.user.email}.`
+    ).catch(console.error);
 
-  sendResponse(res, 201, true, 'Booking created successfully', booking);
+    // Send real-time updates via Socket.IO
+    emitToOwner(booking.club.ownerId, 'new-booking', booking);
+    emitToClub(booking.clubId, 'availability-updated', {
+      clubId: booking.clubId,
+      tableId: booking.tableId,
+    });
+
+    sendResponse(res, 201, true, 'Booking created successfully', booking);
+  } catch (error: any) {
+    if (error.code === 'P2034' || error.message === 'Slot already booked') {
+      return sendResponse(res, 409, false, 'Slot already booked. Please choose another slot.');
+    }
+    throw error;
+  }
 });
 
 export const verifyBooking = asyncHandler(async (req: Request, res: Response) => {
@@ -50,14 +71,14 @@ export const verifyBooking = asyncHandler(async (req: Request, res: Response) =>
 });
 
 export const checkAvailability = asyncHandler(async (req: Request, res: Response) => {
-  const { tableCategoryId, startTime, endTime } = req.query;
+  const { tableId, startTime, endTime } = req.query;
 
-  if (!tableCategoryId || !startTime || !endTime) {
-    return sendResponse(res, 400, false, 'tableCategoryId, startTime, and endTime are required');
+  if (!tableId || !startTime || !endTime) {
+    return sendResponse(res, 400, false, 'tableId, startTime, and endTime are required');
   }
 
   const availability = await bookingService.checkAvailability(
-    tableCategoryId as string,
+    tableId as string,
     new Date(startTime as string),
     new Date(endTime as string)
   );
@@ -92,3 +113,16 @@ export const updateBookingStatus = asyncHandler(async (req: AuthRequest, res: Re
 
   sendResponse(res, 200, true, 'Booking status updated', updatedBooking);
 });
+
+export const getClubBookings = asyncHandler(async (req: Request, res: Response) => {
+  const { clubId } = req.params;
+  const { date } = req.query;
+
+  if (!clubId || !date) {
+    return sendResponse(res, 400, false, 'clubId and date query param are required');
+  }
+
+  const bookings = await bookingService.getClubBookingsForDate(clubId as string, date as string);
+  sendResponse(res, 200, true, 'Club bookings fetched successfully', bookings);
+});
+

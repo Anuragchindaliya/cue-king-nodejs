@@ -1,9 +1,11 @@
 import 'dotenv/config';
+import http from 'http';
 import app from './app';
 import logger from './utils/logger';
 import prisma from './config/db';
 import { initTelegramBot } from './services/notification.service';
 import { initCloudinary } from './config/cloudinary.config';
+import { initSocket } from './config/socket';
 
 const PORT = process.env.PORT || 5001;
 
@@ -20,7 +22,14 @@ const startServer = async () => {
     // Initialize telegram bot
     initTelegramBot();
 
-    app.listen(PORT, () => {
+    // Create HTTP Server
+    const server = http.createServer(app);
+
+    // Initialize Socket.io
+    initSocket(server);
+    logger.info('Socket.IO initialized');
+
+    server.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
     });
   } catch (error) {

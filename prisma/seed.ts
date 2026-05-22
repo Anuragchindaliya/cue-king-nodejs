@@ -1,10 +1,12 @@
-import { PrismaClient, Role, BookingStatus } from '@prisma/client';
+import * as dotenv from 'dotenv';
+dotenv.config();
+
+import { PrismaClient, Role, BookingStatus, TableType, TableStatus } from '@prisma/client';
 import { faker } from '@faker-js/faker';
 import bcrypt from 'bcrypt';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 
-// Using the same initialization as in src/config/db.ts
 const connectionString = process.env.DATABASE_URL;
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
@@ -16,7 +18,12 @@ async function main() {
   console.log('Clearing existing data...');
   await prisma.booking.deleteMany();
   await prisma.product.deleteMany();
-  await prisma.tableCategory.deleteMany();
+  await prisma.table.deleteMany();
+  await prisma.review.deleteMany();
+  await prisma.favorite.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.availability.deleteMany();
+  await prisma.admin.deleteMany();
   await prisma.club.deleteMany();
   await prisma.location.deleteMany();
   await prisma.user.deleteMany();
@@ -28,7 +35,7 @@ async function main() {
   for (let i = 0; i < 10; i++) {
     const owner = await prisma.user.create({
       data: {
-        email: faker.internet.email(),
+        email: faker.internet.email().toLowerCase(),
         name: faker.person.fullName(),
         password: hashedPassword,
         role: Role.CLUB_OWNER,
@@ -37,11 +44,22 @@ async function main() {
     owners.push(owner);
   }
 
+  // Create an explicit owner account for testing
+  const testOwner = await prisma.user.create({
+    data: {
+      email: 'owner@test.com',
+      name: 'Test Club Owner',
+      password: hashedPassword,
+      role: Role.CLUB_OWNER,
+    }
+  });
+  owners.push(testOwner);
+
   const players = [];
   for (let i = 0; i < 50; i++) {
     const player = await prisma.user.create({
       data: {
-        email: faker.internet.email(),
+        email: faker.internet.email().toLowerCase(),
         name: faker.person.fullName(),
         password: hashedPassword,
         role: Role.PLAYER,
@@ -49,6 +67,34 @@ async function main() {
     });
     players.push(player);
   }
+
+  // Create an explicit player account for testing
+  const testPlayer = await prisma.user.create({
+    data: {
+      email: 'player@test.com',
+      name: 'Test Player',
+      password: hashedPassword,
+      role: Role.PLAYER,
+    }
+  });
+  players.push(testPlayer);
+
+  // Create an explicit admin account for testing
+  const testAdmin = await prisma.user.create({
+    data: {
+      email: 'admin@test.com',
+      name: 'Test Admin',
+      password: hashedPassword,
+      role: Role.ADMIN,
+    }
+  });
+
+  await prisma.admin.create({
+    data: {
+      userId: testAdmin.id,
+      permissions: ['ALL'],
+    }
+  });
 
   console.log('Generating Locations...');
   const locations = [];
@@ -62,48 +108,72 @@ async function main() {
     locations.push(location);
   }
 
-  console.log('Generating Clubs, Table Categories, and Products...');
+  console.log('Generating Clubs, Tables, and Products...');
   const clubs = [];
-  const tableCategories = [];
+  const tables = [];
   
   for (let i = 0; i < 20; i++) {
-    const owner = faker.helpers.arrayElement(owners);
+    const owner = i === 0 ? testOwner : faker.helpers.arrayElement(owners);
     const location = faker.helpers.arrayElement(locations);
     
     // Create club
     const club = await prisma.club.create({
       data: {
         name: faker.company.name() + ' Snooker Club',
+        description: faker.lorem.paragraph(),
         lat: faker.location.latitude(),
         lng: faker.location.longitude(),
-        openingTime: '10:00',
+        openingTime: '09:00',
         closingTime: '23:00',
         ownerId: owner.id,
         locationId: location.id,
+        status: 'APPROVED', // Approve standard seeded clubs
+        amenities: ['AC', 'WiFi', 'Parking', 'Cafeteria', 'Restroom'],
       },
     });
     clubs.push(club);
 
-    // Create table categories
-    const snookerTable = await prisma.tableCategory.create({
-      data: {
-        name: 'Snooker Table',
-        quantity: faker.number.int({ min: 2, max: 8 }),
-        pricePerHour: faker.number.int({ min: 10, max: 50 }),
-        clubId: club.id,
-      },
-    });
-    tableCategories.push(snookerTable);
+    // Create custom timings availability
+    for (let day = 0; day < 7; day++) {
+      await prisma.availability.create({
+        data: {
+          clubId: club.id,
+          dayOfWeek: day,
+          openTime: '09:00',
+          closeTime: '23:00',
+          isClosed: false,
+        }
+      });
+    }
 
-    const poolTable = await prisma.tableCategory.create({
-      data: {
-        name: 'Pool Table',
-        quantity: faker.number.int({ min: 2, max: 8 }),
-        pricePerHour: faker.number.int({ min: 5, max: 25 }),
-        clubId: club.id,
-      },
-    });
-    tableCategories.push(poolTable);
+    // Create tables for this club
+    const snookerCount = faker.number.int({ min: 2, max: 5 });
+    for (let j = 0; j < snookerCount; j++) {
+      const table = await prisma.table.create({
+        data: {
+          name: `Snooker Table ${j + 1}`,
+          type: TableType.SNOOKER,
+          pricePerHour: faker.number.int({ min: 300, max: 600 }),
+          clubId: club.id,
+          status: TableStatus.AVAILABLE,
+        },
+      });
+      tables.push(table);
+    }
+
+    const poolCount = faker.number.int({ min: 2, max: 5 });
+    for (let j = 0; j < poolCount; j++) {
+      const table = await prisma.table.create({
+        data: {
+          name: `Pool Table ${j + 1}`,
+          type: TableType.EIGHT_BALL_POOL,
+          pricePerHour: faker.number.int({ min: 200, max: 400 }),
+          clubId: club.id,
+          status: TableStatus.AVAILABLE,
+        },
+      });
+      tables.push(table);
+    }
 
     // Create products
     const productCount = faker.number.int({ min: 2, max: 5 });
@@ -112,7 +182,7 @@ async function main() {
         data: {
           name: faker.commerce.productName(),
           description: faker.commerce.productDescription(),
-          price: parseFloat(faker.commerce.price({ min: 2, max: 50 })),
+          price: parseFloat(faker.commerce.price({ min: 20, max: 200 })),
           clubId: club.id,
         },
       });
@@ -123,20 +193,24 @@ async function main() {
   for (let i = 0; i < 50; i++) {
     const player = faker.helpers.arrayElement(players);
     const club = faker.helpers.arrayElement(clubs);
-    const category = faker.helpers.arrayElement(tableCategories.filter(tc => tc.clubId === club.id));
+    const clubTables = tables.filter(t => t.clubId === club.id);
+    if (clubTables.length === 0) continue;
+    const table = faker.helpers.arrayElement(clubTables);
     
     const startDate = faker.date.soon({ days: 7 });
+    const durationHours = faker.number.int({ min: 1, max: 3 });
     const endDate = new Date(startDate);
-    endDate.setHours(endDate.getHours() + faker.number.int({ min: 1, max: 3 })); // 1-3 hour booking
+    endDate.setHours(endDate.getHours() + durationHours);
     
     await prisma.booking.create({
       data: {
         userId: player.id,
         clubId: club.id,
-        tableCategoryId: category.id,
+        tableId: table.id,
         startTime: startDate,
         endTime: endDate,
         status: faker.helpers.arrayElement([BookingStatus.CONFIRMED, BookingStatus.PENDING, BookingStatus.COMPLETED]),
+        totalPrice: table.pricePerHour * durationHours,
       },
     });
   }

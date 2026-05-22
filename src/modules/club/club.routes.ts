@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createClub, getClubs, getClubById, addTableCategory, getMyClubs, updateClub, getSuggestions } from './club.controller';
+import { createClub, getClubs, getClubById, getMyClubs, updateClub, getSuggestions } from './club.controller';
 import { protect } from '../../middlewares/auth.middleware';
 import { authorize } from '../../middlewares/role.middleware';
 
@@ -58,6 +58,5 @@ router.post(
   createClub
 );
 router.put('/:id', protect, authorize('CLUB_OWNER', 'ADMIN'), updateClub);
-router.post('/:id/table-categories', protect, authorize('CLUB_OWNER', 'ADMIN'), addTableCategory);
 
 export default router;

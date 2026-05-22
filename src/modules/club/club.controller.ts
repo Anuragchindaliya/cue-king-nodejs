@@ -18,13 +18,34 @@ const uploadBuffer = async (buffer: Buffer, folder: string, originalName: string
 export const createClub = asyncHandler(async (req: AuthRequest, res: Response) => {
   const data = { ...req.body };
 
-  // Parse stringified JSON fields sent via FormData
   if (typeof data.amenities === 'string') {
     try { data.amenities = JSON.parse(data.amenities); } catch (e) {}
   }
+
+
   if (typeof data.tableCategories === 'string') {
     try { data.tableCategories = JSON.parse(data.tableCategories); } catch (e) {}
   }
+
+
+  if (data.tableCategories && Array.isArray(data.tableCategories)) {
+    const tables: any[] = [];
+    data.tableCategories.forEach((cat: any) => {
+      const qty = parseInt(cat.quantity) || 1;
+      const type = cat.name.toLowerCase().includes('pool') ? 'EIGHT_BALL_POOL' : 'SNOOKER';
+      for (let i = 1; i <= qty; i++) {
+        tables.push({
+          name: qty > 1 ? `${cat.name} ${i}` : cat.name,
+          type,
+          pricePerHour: parseFloat(cat.pricePerHour) || 0,
+          status: 'AVAILABLE'
+        });
+      }
+    });
+    data.tables = tables;
+    delete data.tableCategories;
+  }
+
 
   // Handle location: find or create
   if (data.city && data.area) {
@@ -199,19 +220,4 @@ export const getClubById = asyncHandler(async (req: Request, res: Response) => {
     return sendResponse(res, 404, false, 'Club not found');
   }
   sendResponse(res, 200, true, 'Club fetched successfully', club);
-});
-
-export const addTableCategory = asyncHandler(async (req: AuthRequest, res: Response) => {
-  // Add an extra check here to ensure req.user.id is the owner of req.params.id (club)
-  const clubId = req.params.id;
-  if(typeof clubId !== "string"){
-    return sendResponse(res, 400, false, 'Club ID is required');
-  }
-  const club = await clubService.getClubById(clubId);
-  if (!club || club.ownerId !== req.user.id) {
-    return sendResponse(res, 403, false, 'Not authorized to add categories to this club');
-  }
-
-  const category = await clubService.addTableCategory(clubId, req.body);
-  sendResponse(res, 201, true, 'Table category added successfully', category);
 });

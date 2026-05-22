@@ -1,8 +1,31 @@
 import { Router } from 'express';
-import { createBooking, checkAvailability, getUserBookings, verifyBooking, getOwnerBookings, updateBookingStatus } from './booking.controller';
+import { createBooking, checkAvailability, getUserBookings, verifyBooking, getOwnerBookings, updateBookingStatus, getClubBookings } from './booking.controller';
 import { protect } from '../../middlewares/auth.middleware';
 
 const router = Router();
+
+/**
+ * @swagger
+ * /api/bookings/club/{clubId}/slots:
+ *   get:
+ *     summary: Get booked slots for a club by date
+ *     parameters:
+ *       - in: path
+ *         name: clubId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of booked slots
+ */
+router.get('/club/:clubId/slots', getClubBookings);
+
 
 /**
  * @swagger
