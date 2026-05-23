@@ -43,3 +43,28 @@ export const markAllAsRead = asyncHandler(async (req: AuthRequest, res: Response
 
   sendResponse(res, 200, true, 'All notifications marked as read');
 });
+
+// SSE stream connection for notifications
+import { setupSSEHeaders, startHeartbeat, registerUserClient, unregisterUserClient } from '../../services/sse.service';
+
+export const getNotificationEvents = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const userId = req.user.id;
+
+  // Initialize SSE headers
+  setupSSEHeaders(res);
+
+  // Send initial ping/event
+  res.write(`event: connected\ndata: ${JSON.stringify({ success: true, message: 'Notification stream connected' })}\n\n`);
+
+  // Register client
+  registerUserClient(userId, res);
+
+  // Start keepalive
+  const heartbeatInterval = startHeartbeat(res);
+
+  req.on('close', () => {
+    clearInterval(heartbeatInterval);
+    unregisterUserClient(userId, res);
+    res.end();
+  });
+});

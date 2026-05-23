@@ -1,11 +1,12 @@
 import { Router } from 'express';
-import { getMyNotifications, markAsRead, markAllAsRead } from './notification.controller';
+import { getMyNotifications, markAsRead, markAllAsRead, getNotificationEvents } from './notification.controller';
 import { protect } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
 router.use(protect);
 
+router.get('/events', getNotificationEvents);
 router.get('/', getMyNotifications);
 router.patch('/read-all', markAllAsRead);
 router.patch('/:id/read', markAsRead);

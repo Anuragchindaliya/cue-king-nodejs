@@ -2,6 +2,7 @@ import prisma from '../../config/db';
 import { Prisma } from '@prisma/client';
 import { emitToUser, emitToOwner, emitToClub } from '../../config/socket';
 import { createAppNotification, notifyVendor, notifyPlayer } from '../../services/notification.service';
+import { publishNotification } from '../../services/sse.service';
 
 export const checkAvailability = async (
   tableId: string,
@@ -240,6 +241,10 @@ export const updateBookingStatus = async (
   // Also emit state change to individual player socket
   emitToUser(booking.userId, 'booking-updated', updatedBooking);
   emitToOwner(booking.club.ownerId, 'booking-updated', updatedBooking);
+
+  // Publish via Server-Sent Events (SSE)
+  publishNotification(booking.userId, 'booking-updated', updatedBooking).catch(console.error);
+  publishNotification(booking.club.ownerId, 'booking-updated', updatedBooking).catch(console.error);
 
   return updatedBooking;
 };

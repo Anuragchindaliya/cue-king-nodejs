@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import prisma from '../config/db';
 import logger from '../utils/logger';
 import { emitToUser } from '../config/socket';
+import { publishNotification } from './sse.service';
 
 const telegramBot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || '');
 
@@ -161,5 +162,9 @@ export const createAppNotification = async (
   });
 
   emitToUser(userId, 'new-notification', notif);
+  // Publish via Server-Sent Events (SSE)
+  publishNotification(userId, 'new-notification', notif).catch(err => {
+    logger.error('Failed to publish SSE notification:', err);
+  });
   return notif;
 };

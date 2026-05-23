@@ -13,6 +13,7 @@ import notificationRoutes from './modules/notification/notification.routes';
 import favoritesRoutes from './modules/favorites/favorites.routes';
 import reviewsRoutes from './modules/reviews/reviews.routes';
 import adminRoutes from './modules/admin/admin.routes';
+import lobbyRoutes from './modules/lobby/lobby.routes';
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use('/notifications', notificationRoutes);
 router.use('/favorites', favoritesRoutes);
 router.use('/reviews', reviewsRoutes);
 router.use('/admin', adminRoutes);
+router.use('/lobby', lobbyRoutes);
 
 export default router;

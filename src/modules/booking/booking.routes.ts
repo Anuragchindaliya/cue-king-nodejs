@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createBooking, checkAvailability, getUserBookings, verifyBooking, getOwnerBookings, updateBookingStatus, getClubBookings } from './booking.controller';
+import { createBooking, checkAvailability, getUserBookings, verifyBooking, getOwnerBookings, updateBookingStatus, getClubBookings, getBookingById } from './booking.controller';
 import { protect } from '../../middlewares/auth.middleware';
 
 const router = Router();
@@ -100,5 +100,6 @@ router.get('/owner-bookings', protect, getOwnerBookings);
  *         description: Status updated
  */
 router.patch('/:id/status', protect, updateBookingStatus);
+router.get('/:id', protect, getBookingById);
 
 export default router;

@@ -73,6 +73,7 @@ model Club {
   availabilities     Availability[]
   favorites          Favorite[]
   reviews            Review[]
+  lobbies            Lobby[]
 
   @@index([name])
 }
@@ -222,4 +223,46 @@ enum NotificationType {
   BOOKING_REJECTED
   BOOKING_CANCELLED
   SYSTEM
+}
+
+model Lobby {
+  id          String        @id @default(uuid())
+  clubId      String
+  hostId      String
+  isLocked    Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  expiresAt   DateTime      // Automatic cleanup after 2 hours of inactivity
+  members     LobbyMember[]
+  votes       Vote[]
+  messages    ChatMessage[]
+  club        Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+}
+
+model LobbyMember {
+  id        String   @id @default(uuid())
+  lobbyId   String
+  userId    String?  // Optional if they are a non-registered guest
+  name      String   // Nickname used in lobby
+  socketId  String?  // Tracks online status
+  lobby     Lobby    @relation(fields: [lobbyId], references: [id], onDelete: Cascade)
+  votes     Vote[]
+}
+
+model Vote {
+  id          String   @id @default(uuid())
+  lobbyId     String
+  voterId     String   // LobbyMember ID
+  itemType    String   // "TABLE", "FOOD_PACKAGE", "TIMESLOT"
+  itemId      String   // Target entity ID being voted for
+  lobby       Lobby    @relation(fields: [lobbyId], references: [id], onDelete: Cascade)
+  voter       LobbyMember @relation(fields: [voterId], references: [id], onDelete: Cascade)
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  lobbyId   String
+  senderName String
+  message   String
+  createdAt DateTime @default(now())
+  lobby     Lobby    @relation(fields: [lobbyId], references: [id], onDelete: Cascade)
 }

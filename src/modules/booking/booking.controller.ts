@@ -126,3 +126,24 @@ export const getClubBookings = asyncHandler(async (req: Request, res: Response) 
   sendResponse(res, 200, true, 'Club bookings fetched successfully', bookings);
 });
 
+export const getBookingById = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const id = req.params.id as string;
+
+  const booking = await prisma.booking.findUnique({
+    where: { id },
+    include: {
+      club: {
+        include: { location: true }
+      },
+      table: true,
+      user: { select: { id: true, name: true, email: true } }
+    }
+  });
+
+  if (!booking) {
+    return sendResponse(res, 404, false, 'Booking not found');
+  }
+
+  sendResponse(res, 200, true, 'Booking fetched successfully', booking);
+});
+
