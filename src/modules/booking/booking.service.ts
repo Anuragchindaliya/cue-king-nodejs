@@ -230,6 +230,7 @@ export const updateBookingStatus = async (
       `Booking request for ${booking.table.name} at ${booking.club.name} has been withdrawn by ${booking.user.name || booking.user.email}.`
     );
     emitToOwner(booking.club.ownerId, 'booking-cancelled', updatedBooking);
+    publishNotification(booking.club.ownerId, 'booking-cancelled', updatedBooking).catch(console.error);
   }
 
   // 3. Notify all clients on the club page to refresh their availability grid

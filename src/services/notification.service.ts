@@ -168,3 +168,25 @@ export const createAppNotification = async (
   });
   return notif;
 };
+
+export const sendReminderEmail = async (email: string, clubName: string, tableName: string, startTime: Date) => {
+  const subject = `Booking Reminder: ${clubName}`;
+  const text = `Hi, your booking for ${tableName} at ${clubName} is starting in 15 minutes (${startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}). See you there!`;
+
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    logger.warn(`Email not sent (SMTP not configured). Logging reminder: [To: ${email}] ${text}`);
+    return;
+  }
+
+  try {
+    await transporter.sendMail({
+      from: `"Cue King" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject,
+      text,
+    });
+    logger.info(`Reminder email sent to ${email}`);
+  } catch (error) {
+    logger.error(`Failed to send reminder email to player ${email} (fallback to log):`, error);
+  }
+};

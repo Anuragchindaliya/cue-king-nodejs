@@ -5,6 +5,7 @@ import { sendResponse } from '../../utils/response';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { notifyVendor, notifyPlayer, createAppNotification } from '../../services/notification.service';
 import { emitToOwner, emitToClub } from '../../config/socket';
+import { publishNotification } from '../../services/sse.service';
 import jwt from 'jsonwebtoken';
 import prisma from '../../config/db';
 
@@ -31,6 +32,8 @@ export const createBooking = asyncHandler(async (req: AuthRequest, res: Response
 
     // Send real-time updates via Socket.IO
     emitToOwner(booking.club.ownerId, 'new-booking', booking);
+    // Send real-time updates via Server-Sent Events (SSE)
+    publishNotification(booking.club.ownerId, 'new-booking', booking).catch(console.error);
     emitToClub(booking.clubId, 'availability-updated', {
       clubId: booking.clubId,
       tableId: booking.tableId,

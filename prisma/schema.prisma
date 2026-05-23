@@ -14,6 +14,7 @@ model User {
   name                  String?
   role                  Role           @default(PLAYER)
   telegramChatId        String?
+  phoneNumber           String?        @unique
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
   bookings              Booking[]
@@ -63,6 +64,7 @@ model Club {
   ownerId            String
   locationId         String
   status             ClubStatus     @default(PENDING)
+  upiId              String?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   bookings           Booking[]
@@ -74,6 +76,7 @@ model Club {
   favorites          Favorite[]
   reviews            Review[]
   lobbies            Lobby[]
+  expenses           Expense[]
 
   @@index([name])
 }
@@ -89,6 +92,7 @@ model Table {
   updatedAt    DateTime    @updatedAt
   club         Club        @relation(fields: [clubId], references: [id], onDelete: Cascade)
   bookings     Booking[]
+  timers       TableTimer[]
 
   @@index([clubId])
 }
@@ -102,6 +106,7 @@ model Booking {
   endTime    DateTime
   status     BookingStatus @default(PENDING)
   totalPrice Float
+  reminderSent Boolean       @default(false)
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
   club       Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
@@ -266,3 +271,39 @@ model ChatMessage {
   createdAt DateTime @default(now())
   lobby     Lobby    @relation(fields: [lobbyId], references: [id], onDelete: Cascade)
 }
+
+enum TimerStatus {
+  RUNNING
+  STOPPED
+  PAID
+}
+
+model TableTimer {
+  id            String      @id @default(uuid())
+  tableId       String
+  startTime     DateTime
+  endTime       DateTime?
+  targetMinutes Int?        // Optional target duration alert
+  hourlyRate    Float       // Hourly rate at session start
+  finalAmount   Float?      // Editable final billing amount
+  playerName    String?     // Walk-in user details
+  playerPhone   String?
+  playerEmail   String?
+  status        TimerStatus @default(RUNNING)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  table         Table       @relation(fields: [tableId], references: [id], onDelete: Cascade)
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  clubId      String
+  amount      Float
+  category    String   // e.g., "Table Repair", "Cloth Maintenance", etc.
+  description String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  club        Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+}
+

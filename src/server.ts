@@ -7,6 +7,7 @@ import { initTelegramBot } from './services/notification.service';
 import { initCloudinary } from './config/cloudinary.config';
 import { initSocket } from './config/socket';
 import { initSSEService } from './services/sse.service';
+import { startReminderScheduler } from './services/reminder.scheduler';
 
 const PORT = process.env.PORT || 5001;
 
@@ -26,6 +27,9 @@ const startServer = async () => {
     // Initialize SSE Service (Redis Pub/Sub subscription)
     initSSEService();
     logger.info('SSE Service (Redis Pub/Sub) initialized');
+
+    // Start background reminders
+    startReminderScheduler();
 
     // Create HTTP Server
     const server = http.createServer(app);
