@@ -10,7 +10,7 @@ export const getProfile = asyncHandler(async (req: AuthRequest, res: Response) =
 });
 
 export const updateProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { name, telegramChatId } = req.body;
-  const user = await userService.updateUserProfile(req.user.id, name, telegramChatId);
+  const { name, telegramChatId, upiId } = req.body;
+  const user = await userService.updateUserProfile(req.user.id, name, telegramChatId, upiId);
   sendResponse(res, 200, true, 'User profile updated successfully', user);
 });

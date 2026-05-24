@@ -15,6 +15,7 @@ model User {
   role                  Role           @default(PLAYER)
   telegramChatId        String?
   phoneNumber           String?        @unique
+  upiId                 String?
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
   bookings              Booking[]

@@ -8,6 +8,7 @@ export const getUserProfile = async (id: string) => {
       email: true,
       name: true,
       telegramChatId: true,
+      upiId: true,
       role: true,
       createdAt: true,
     },
@@ -20,10 +21,11 @@ export const getUserProfile = async (id: string) => {
   return user;
 };
 
-export const updateUserProfile = async (id: string, name?: string, telegramChatId?: string) => {
+export const updateUserProfile = async (id: string, name?: string, telegramChatId?: string, upiId?: string) => {
   const data: any = {};
   if (name !== undefined) data.name = name;
   if (telegramChatId !== undefined) data.telegramChatId = telegramChatId;
+  if (upiId !== undefined) data.upiId = upiId;
 
   return prisma.user.update({
     where: { id },
@@ -33,6 +35,7 @@ export const updateUserProfile = async (id: string, name?: string, telegramChatI
       email: true,
       name: true,
       telegramChatId: true,
+      upiId: true,
       role: true,
       createdAt: true,
     },
