@@ -5,14 +5,16 @@ import logger from '../utils/logger';
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const googleCallbackUrl = process.env.GOOGLE_CALLBACK_URL || '/api/auth/google/callback';
 
+console.log({ googleClientId, googleClientSecret, googleCallbackUrl })
 if (googleClientId && googleClientSecret) {
   passport.use(
     new GoogleStrategy(
       {
         clientID: googleClientId,
         clientSecret: googleClientSecret,
-        callbackURL: process.env.GOOGLE_CALLBACK_URL || '/api/auth/google/callback',
+        callbackURL: googleCallbackUrl,
       },
       async (accessToken, refreshToken, profile, done) => {
         try {

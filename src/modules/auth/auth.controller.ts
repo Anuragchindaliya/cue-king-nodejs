@@ -26,5 +26,5 @@ export const googleCallback = (req: Request, res: Response) => {
   const token = authService.generateTokenForUser(user);
 
   // Redirect to frontend with token
-  res.redirect(`http://localhost:3000/login?token=${token}`);
+  res.redirect(`${req.protocol}://${req.get('host')}/login?token=${token}`);
 };
