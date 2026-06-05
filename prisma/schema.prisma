@@ -24,6 +24,10 @@ model User {
   favorites             Favorite[]
   reviews               Review[]
   adminProfile          Admin?
+  products              Product[]      @relation("ProductOwner")
+  buyerChats            ProductChatRoom[] @relation("BuyerChats")
+  sellerChats           ProductChatRoom[] @relation("SellerChats")
+  sentProductMessages   ProductChatMessage[] @relation("SenderMessages")
 
   // Notification Preferences
   emailNotifications    Boolean        @default(true)
@@ -181,15 +185,49 @@ model Admin {
 }
 
 model Product {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  price       Float
-  image       String?
-  clubId      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  club        Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  id            String   @id @default(uuid())
+  name          String
+  description   String?
+  price         Float
+  image         String?
+  condition     String?  // e.g. NEW, GENTLE_USE, HEAVILY_USED
+  age           String?  // e.g. "6 months"
+  lat           Float?
+  lng           Float?
+  locationName  String?  // e.g. "New Delhi, CP"
+  status        String   @default("ACTIVE") // ACTIVE, SOLD, DRAFT
+  clubId        String?
+  ownerId       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  club          Club?    @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  owner         User?    @relation("ProductOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  chatRooms     ProductChatRoom[]
+}
+
+model ProductChatRoom {
+  id          String               @id @default(uuid())
+  productId   String
+  buyerId     String
+  sellerId    String
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  product     Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyer       User                 @relation("BuyerChats", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller      User                 @relation("SellerChats", fields: [sellerId], references: [id], onDelete: Cascade)
+  messages    ProductChatMessage[]
+
+  @@unique([productId, buyerId, sellerId])
+}
+
+model ProductChatMessage {
+  id         String          @id @default(uuid())
+  roomId     String
+  senderId   String
+  message    String
+  createdAt  DateTime        @default(now())
+  room       ProductChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender     User            @relation("SenderMessages", fields: [senderId], references: [id], onDelete: Cascade)
 }
 
 enum Role {
