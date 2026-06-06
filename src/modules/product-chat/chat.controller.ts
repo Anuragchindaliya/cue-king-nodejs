@@ -5,6 +5,7 @@ import { sendResponse } from '../../utils/response';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { emitToUser } from '../../config/socket';
 import prisma from '../../config/db';
+import { createAppNotification } from '../../services/notification.service';
 
 // Start a new chat room or get existing one
 export const startChat = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -68,6 +69,30 @@ export const sendMessage = asyncHandler(async (req: AuthRequest, res: Response) 
       // Emit to recipient and sender for real-time sync
       emitToUser(recipientId, 'new-product-message', { roomId, message: savedMessage });
       emitToUser(senderId, 'new-product-message', { roomId, message: savedMessage });
+
+      // Determine sender name and product name for notification
+      const roomWithDetails = await prisma.productChatRoom.findUnique({
+        where: { id: roomId },
+        include: {
+          product: { select: { name: true } },
+          buyer: { select: { name: true, email: true } },
+          seller: { select: { name: true, email: true } },
+        }
+      });
+      
+      if (roomWithDetails) {
+        const senderName = senderId === roomWithDetails.buyerId 
+          ? (roomWithDetails.buyer.name || roomWithDetails.buyer.email)
+          : (roomWithDetails.seller.name || roomWithDetails.seller.email);
+        const productName = roomWithDetails.product.name;
+        
+        await createAppNotification(
+          recipientId,
+          'SYSTEM',
+          `New message from ${senderName}`,
+          `Re: ${productName} - "${messageText.length > 50 ? messageText.substring(0, 47) + '...' : messageText}" [Room ID: ${roomId}]`
+        );
+      }
     }
 
     sendResponse(res, 201, true, 'Message sent successfully', savedMessage);
