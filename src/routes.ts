@@ -18,6 +18,7 @@ import lobbyRoutes from './modules/lobby/lobby.routes';
 import timerRoutes from './modules/timer/timer.routes';
 import financeRoutes from './modules/finance/finance.routes';
 import crmRoutes from './modules/crm/crm.routes';
+import aiRoutes from './modules/ai/ai.routes';
 
 const router = Router();
 
@@ -38,5 +39,6 @@ router.use('/lobby', lobbyRoutes);
 router.use('/timers', timerRoutes);
 router.use('/finance', financeRoutes);
 router.use('/crm', crmRoutes);
+router.use('/ai', aiRoutes);
 
 export default router;
